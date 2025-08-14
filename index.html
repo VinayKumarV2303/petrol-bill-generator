@@ -1,0 +1,444 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HP Petrol Bill Generator</title>
+  <style>
+    :root{
+      --hp-blue:#0b5fff; /* HPCL brand-ish blue */
+      --ink:#111827;
+      --muted:#6b7280;
+      --bg:#f3f4f6;
+      --card:#ffffff;
+      --accent:#e5e7eb;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #f8fafc, #eef2ff);
+      color:var(--ink);
+    }
+    .wrap{
+      max-width:1100px; margin:24px auto; padding:16px;
+    }
+    h1{margin:0 0 16px; font-size: clamp(22px, 4vw, 32px);}
+    .grid{
+      display:grid; grid-template-columns: 1fr; gap:16px;
+    }
+    @media(min-width: 980px){
+      .grid{ grid-template-columns: 1.1fr 0.9fr; }
+    }
+    .card{background:var(--card); border:1px solid var(--accent); border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,.06)}
+    .card header{padding:16px 18px; border-bottom:1px solid var(--accent); font-weight:600}
+    .card .content{padding:16px 18px}.row{display:grid; grid-template-columns: 1fr 1fr; gap:12px}
+.row-3{display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px}
+.row-4{display:grid; grid-template-columns: repeat(4, 1fr); gap:12px}
+.full{grid-column: 1 / -1}
+
+label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px}
+input, select, button, textarea{
+  font: inherit; color: inherit;
+}
+input, select, textarea{
+  width:100%; background:#fff; border:1px solid var(--accent); border-radius:10px; padding:10px 12px;
+}
+textarea{min-height:70px; resize:vertical}
+.muted{color:var(--muted)}
+
+.actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+.btn{cursor:pointer; border:1px solid transparent; border-radius:12px; padding:10px 14px; font-weight:600}
+.btn.primary{background:var(--hp-blue); color:#fff}
+.btn.ghost{background:#fff; border-color:var(--accent)}
+.btn.warn{background:#ef4444; color:#fff}
+
+/* Receipt canvas holder */
+.receipt-wrap{display:flex; justify-content:center; padding:16px}
+canvas{background:#fff; border-radius:14px; border:1px solid var(--accent)}
+.tip{font-size:12px; color:var(--muted); text-align:center; margin-top:8px}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>HP Petrol Bill Generator</h1>
+    <div class="grid">
+      <!-- FORM CARD -->
+      <section class="card">
+        <header>Bill Details</header>
+        <div class="content">
+          <div class="row">
+            <div>
+              <label>Pump Name</label>
+              <input id="pumpName" value="HP PETROL PUMP"/>
+            </div>
+            <div>
+              <label>Payment Mode</label>
+              <select id="mode">
+                <option value="UPI">UPI</option>
+                <option value="CASH">CASH</option>
+                <option value="CARD">CARD</option>
+                <option value="CREDIT">CREDIT</option>
+              </select>
+            </div>
+          </div><div class="full" style="margin-top:12px">
+        <label>Address</label>
+        <input id="address" value="Rajaji Nagar, Bengaluru"/>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>GSTIN (optional)</label>
+          <input id="gstin" value="29ABCDE1234F1Z5"/>
+        </div>
+        <div>
+          <label>Bill No</label>
+          <input id="billNo"/>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>Nozzle</label>
+          <input id="nozzle" value="03"/>
+        </div>
+        <div>
+          <label>Vehicle No</label>
+          <input id="vehicle" value="KA-01-AB-1234"/>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <div>
+          <label>Date</label>
+          <input id="date" type="date"/>
+        </div>
+        <div>
+          <label>Time</label>
+          <input id="time" type="time"/>
+        </div>
+      </div>
+
+      <div class="row-3" style="margin-top:12px">
+        <div>
+          <label>Rate per Litre (₹)</label>
+          <input id="rate" type="number" step="0.01" value="102"/>
+        </div>
+        <div>
+          <label>Litres</label>
+          <input id="litres" type="number" step="0.01" value="3.62"/>
+        </div>
+        <div>
+          <label>Amount (₹)</label>
+          <input id="amount" type="number" step="0.01" value="369"/>
+        </div>
+      </div>
+
+      <div class="row" style="align-items:center; margin-top:6px">
+        <div style="display:flex; align-items:center; gap:8px">
+          <input id="byAmount" type="checkbox"> <label for="byAmount" style="margin:0">Enter by Amount (₹) → auto-calc Litres</label>
+        </div>
+        <div>
+          <label>Attendant</label>
+          <input id="attendant" value="A. Kumar"/>
+        </div>
+      </div>
+
+      <div class="full" style="margin-top:12px">
+        <label>Footer Note</label>
+        <textarea id="notes">Thank you! Drive Safe</textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnUpdate">Generate / Update</button>
+        <button class="btn ghost" id="btnPng">Download PNG</button>
+        <button class="btn ghost" id="btnPrint">Print PDF</button>
+        <button class="btn warn" id="btnReset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RECEIPT PREVIEW CARD -->
+  <section class="card">
+    <header>Receipt Preview</header>
+    <div class="content">
+      <div class="receipt-wrap">
+        <!-- Taller canvas for crisp print. 576x1100 approximates a receipt proportion. -->
+        <canvas id="receiptCanvas" width="576" height="1100"></canvas>
+      </div>
+      <div class="tip">Tip: Fill the form and click <b>Generate / Update</b>. Then use <b>Download PNG</b> or <b>Print PDF</b>.</div>
+    </div>
+  </section>
+</div>
+
+  </div>  <script>
+    // ---------- Helpers ----------
+    const fmtINR = (n) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(n || 0));
+
+    const $ = (id) => document.getElementById(id);
+
+    function todayISO(){
+      const d = new Date();
+      return d.toISOString().slice(0,10); // YYYY-MM-DD
+    }
+    function nowHM(){
+      const d = new Date();
+      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+    function genBillNo(){
+      const d = new Date();
+      return `PP-${String(d.getFullYear()).slice(-2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}-${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}${String(d.getSeconds()).padStart(2,'0')}`;
+    }
+
+    // ---------- Canvas Drawing ----------
+    const canvas = $('receiptCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function roundRect(ctx, x, y, w, h, r){
+      const rr = Math.min(r, w/2, h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y, x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x, y+h, rr);
+      ctx.arcTo(x, y+h, x, y, rr);
+      ctx.arcTo(x, y, x+w, y, rr);
+      ctx.closePath();
+    }
+
+    function dashedLine(y){
+      ctx.save();
+      ctx.setLineDash([6,6]);
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.beginPath();
+      ctx.moveTo(36, y);
+      ctx.lineTo(canvas.width-36, y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function hpBadge(x, y){
+      // Simple HP-like badge: blue circle + HP letters (no trademarked asset used)
+      const r = 28;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI*2);
+      ctx.fillStyle = '#0b5fff';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('HP', x, y);
+      ctx.restore();
+    }
+
+    function headerBar(){
+      // Blue header bar
+      ctx.save();
+      ctx.fillStyle = '#0b5fff';
+      ctx.fillRect(0, 0, canvas.width, 96);
+
+      hpBadge(56, 48);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(($('pumpName').value || 'HP PETROL PUMP').toUpperCase(), 100, 38);
+
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.fillText($('address').value || '', 100, 64);
+      ctx.restore();
+    }
+
+    function textLabel(x, y, label, value, alignRight=false){
+      ctx.save();
+      ctx.textBaseline = 'top';
+      ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
+      ctx.fillStyle = '#6b7280';
+      if(alignRight){ ctx.textAlign = 'right'; } else { ctx.textAlign = 'left'; }
+      ctx.fillText(label, x, y);
+      ctx.fillStyle = '#111827';
+      ctx.font = '14px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace';
+      if(alignRight){ ctx.fillText(value, x, y+18); } else { ctx.fillText(value, x, y+18); }
+      ctx.restore();
+    }
+
+    function bodyCard(){
+      // white card body under header
+      const x = 18, y = 84, w = canvas.width-36, h = canvas.height-120;
+      roundRect(ctx, x, y, w, h, 14);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.stroke();
+    }
+
+    function renderReceipt(){
+      // clear
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+
+      headerBar();
+      bodyCard();
+
+      let cursorY = 120;
+
+      // Row 1: Date/Time + Bill No
+      const d = $('date').value || todayISO();
+      const t = $('time').value || nowHM();
+      const billNo = $('billNo').value || genBillNo();
+      const mode = $('mode').value;
+
+      textLabel(36, cursorY, 'DATE', new Date(d).toLocaleDateString('en-GB'));
+      textLabel(canvas.width-36, cursorY, 'TIME', t, true);
+      cursorY += 46;
+
+      textLabel(36, cursorY, 'BILL NO', billNo);
+      textLabel(canvas.width-36, cursorY, 'PAYMENT', mode, true);
+      cursorY += 46;
+
+      dashedLine(cursorY); cursorY += 12;
+
+      // Row 2: Nozzle, Vehicle, Attendant
+      textLabel(36, cursorY, 'NOZZLE', $('nozzle').value || '-');
+      textLabel(canvas.width/2, cursorY, 'VEHICLE', $('vehicle').value || '-');
+      textLabel(canvas.width-36, cursorY, 'ATTENDANT', $('attendant').value || '-', true);
+      cursorY += 46;
+
+      dashedLine(cursorY); cursorY += 12;
+
+      // Row 3: Qty / Rate / Amount
+      const rate = Number($('rate').value || 0);
+      const litres = Number($('litres').value || 0);
+      const amount = Number($('amount').value || 0);
+
+      textLabel(36, cursorY, 'QTY (L)', litres.toFixed(2));
+      textLabel(canvas.width/2, cursorY, 'RATE (₹/L)', rate.toFixed(2));
+      textLabel(canvas.width-36, cursorY, 'AMOUNT', fmtINR(amount), true);
+      cursorY += 46;
+
+      dashedLine(cursorY); cursorY += 12;
+
+      // GSTIN if provided
+      const gstin = ($('gstin').value || '').trim();
+      if (gstin) {
+        textLabel(36, cursorY, 'GSTIN', gstin);
+        cursorY += 38;
+      }
+
+      // Big total box
+      const totalBoxX = 36, totalBoxW = canvas.width-72, totalBoxH = 86;
+      roundRect(ctx, totalBoxX, cursorY, totalBoxW, totalBoxH, 12);
+      ctx.fillStyle = '#f9fafb'; ctx.fill();
+      ctx.strokeStyle = '#e5e7eb'; ctx.stroke();
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '12px ui-monospace, monospace';
+      ctx.fillText('TOTAL PAYABLE', totalBoxX+16, cursorY+14);
+      ctx.fillStyle = '#111827';
+      ctx.font = 'bold 28px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(fmtINR(amount), totalBoxX+totalBoxW-16, cursorY+50);
+      ctx.textAlign = 'left';
+      cursorY += totalBoxH + 16;
+
+      dashedLine(cursorY); cursorY += 12;
+
+      // Notes / Footer
+      const note = ($('notes').value || '').trim();
+      ctx.fillStyle = '#111827';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(note || 'Thank you! Drive Safe', canvas.width/2, cursorY+4);
+      cursorY += 40;
+
+      // footer small print
+      ctx.fillStyle = '#6b7280';
+      ctx.font = '11px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('This is a computer generated receipt.', canvas.width/2, canvas.height-26);
+    }
+
+    // ---------- Form Logic ----------
+    function calc(){
+      const byAmt = $('byAmount').checked;
+      const rate = Number($('rate').value || 0);
+      let litres = Number($('litres').value || 0);
+      let amount = Number($('amount').value || 0);
+
+      if (byAmt) {
+        litres = rate ? (amount / rate) : 0;
+        $('litres').value = litres.toFixed(2);
+      } else {
+        amount = litres * rate;
+        $('amount').value = amount.toFixed(2);
+      }
+    }
+
+    function update(){
+      calc();
+      // Ensure defaults
+      if(!$('billNo').value) $('billNo').value = genBillNo();
+      if(!$('date').value) $('date').value = todayISO();
+      if(!$('time').value) $('time').value = nowHM();
+      renderReceipt();
+    }
+
+    function downloadPNG(){
+      const link = document.createElement('a');
+      link.download = `${($('billNo').value || 'HP-BILL')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function printPDF(){
+      // Open a new window with the image to use browser print (save as PDF)
+      const w = window.open('', '_blank');
+      const dataURL = canvas.toDataURL('image/png');
+      w.document.write(`<!doctype html><title>Print Bill</title><style>body{margin:0;display:flex;justify-content:center;align-items:center;background:#fff}img{width:100%;max-width:600px}</style><img src="${dataURL}" onload="window.print(); setTimeout(()=>window.close(), 300);" />`);w.document.close();
+}
+
+function resetAll(){
+  $('pumpName').value = 'HP PETROL PUMP';
+  $('address').value = 'Rajaji Nagar, Bengaluru';
+  $('gstin').value = '29ABCDE1234F1Z5';
+  $('billNo').value = genBillNo();
+  $('nozzle').value = '03';
+  $('vehicle').value = 'KA-01-AB-1234';
+  $('mode').value = 'UPI';
+  $('date').value = todayISO();
+  $('time').value = nowHM();
+  $('rate').value = 102;
+  $('litres').value = 3.62;
+  $('amount').value = 369;
+  $('attendant').value = 'A. Kumar';
+  $('notes').value = 'Thank you! Drive Safe';
+  $('byAmount').checked = false;
+  renderReceipt();
+}
+
+// Event bindings
+['pumpName','address','gstin','billNo','nozzle','vehicle','mode','date','time','rate','litres','amount','attendant','notes'].forEach(id=>{
+  $(id).addEventListener('input', update);
+  $(id).addEventListener('change', update);
+});
+$('byAmount').addEventListener('change', update);
+
+$('btnUpdate').addEventListener('click', (e)=>{e.preventDefault(); update();});
+$('btnPng').addEventListener('click', (e)=>{e.preventDefault(); downloadPNG();});
+$('btnPrint').addEventListener('click', (e)=>{e.preventDefault(); printPDF();});
+$('btnReset').addEventListener('click', (e)=>{e.preventDefault(); resetAll();});
+
+// Init defaults on load
+window.addEventListener('DOMContentLoaded', ()=>{
+  $('billNo').value = genBillNo();
+  $('date').value = todayISO();
+  $('time').value = nowHM();
+  renderReceipt();
+});
+
+  </script>
+</body>
+</html>
